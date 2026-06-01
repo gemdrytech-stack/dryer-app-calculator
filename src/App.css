@@ -396,8 +396,14 @@ th:first-child {
   .kpi-grid,
   .five-col,
   .three-col,
+  .six-col,
+  .four-col,
   .two-col-layout {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .section-card {
+    padding: 18px; /* Slightly tighter padding */
   }
 }
 
@@ -406,11 +412,15 @@ th:first-child {
   .five-col,
   .three-col,
   .two-col,
+  .six-col,
+  .four-col,
   .two-col-layout {
     grid-template-columns: 1fr;
   }
 
-  .main-wrap,
+  .main-wrap{
+    display: block;
+  }
   .topbar-inner {
     padding: 16px;
   }
@@ -418,4 +428,28 @@ th:first-child {
   h1 {
     font-size: 20px;
   }
+
+   .section-card {
+    padding: 14px; /* Saves valuable screen width */
+    border-radius: 14px; /* Slightly softer corners for small screens */
+    margin-top: 16px;
+  }
+
+  .section-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+
+  .section-title-row h2 {
+    font-size: 16px; /* Scales down header text size */
+  }
+  
+  /* Stack fields inside the card nicely */
+  .field {
+    padding: 12px;
+  }
+
 }

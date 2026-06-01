@@ -494,9 +494,9 @@ export default function App() {
           </div>
         </Section>
 
-        <div className="two-col-layout">
+        <div className="">
           <Section icon={Fuel} title="Fuel Consumption" subtitle="Consumption, direct heat and indirect heat from workbook multipliers.">
-            <div className="table-scroll">
+            <div className="table-scroll temp-table">
               <table>
                 <thead>
                   <tr>
