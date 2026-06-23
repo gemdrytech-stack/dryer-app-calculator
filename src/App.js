@@ -15,26 +15,27 @@ import {
   ThermometerSun
 } from "lucide-react";
 import "./App.css";
+import logo from "./Assets/logo192.png";
 
 const defaultInputs = {
   dryingLengthFactor: 3.251,
   dryingLengthQuantity: 1,
   width: 2.6,
-  productThickness: 0.15,
+  productThickness: 0.20,
   layer: 1,
   wetProductDensity: 500,
   dryingTime: 20,
-  feedMaterial: 7143,
-  feedMoisture: 30,
-  dischargeMoisture: 6,
+  feedMaterial: 0,
+  feedMoisture: 0,
+  dischargeMoisture: 0,
   specificHeatMaterial: 0.4,
   materialInletTemp: 20,
-  materialOutletTemp: 110,
+  materialOutletTemp: 60,
   heatLossFactor: 0.2,
   airDensity: 0.7451,
   initialAirTemp: 30,
-  dryAirTemp: 210,
-  exhaustTemp: 120,
+  dryAirTemp: 130,
+  exhaustTemp: 70,
   specificHeatAir: 0.254,
   requiredHeat: 37000,
   heatTransferCoefficient: 25.7,
@@ -174,9 +175,9 @@ function CalcField({ label, value, unit, formula, digits = 2 }) {
   );
 }
 
-function Section({ icon: Icon, title, subtitle, children }) {
+function Section({ id, icon: Icon, title, subtitle, children, action }) {
   return (
-    <section className="section-card">
+    <section id={id} className="section-card">
       <div className="section-title-row">
         <div className="section-icon">
           <Icon size={18} />
@@ -185,7 +186,10 @@ function Section({ icon: Icon, title, subtitle, children }) {
           <h2>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
         </div>
+
+        {action && <div className="section-action">{action}</div>}
       </div>
+
       {children}
     </section>
   );
@@ -194,6 +198,8 @@ function Section({ icon: Icon, title, subtitle, children }) {
 export default function App() {
   const [inputs, setInputs] = useState(defaultInputs);
   const [fixedItems, setFixedItems] = useState(defaultFixedItems);
+  const [manualHeatBalance, setManualHeatBalance] = useState(false);
+  const [heatBalanceInput, setHeatBalanceInput] = useState(0);
 
   const update = (key, value) => setInputs((prev) => ({ ...prev, [key]: value }));
 
@@ -235,7 +241,8 @@ export default function App() {
     const risingHeatLoad = airMass * risingDeltaT * inputs.specificHeatAir;
     const exhaustHeatLoad = airMass * exhaustDeltaT * inputs.specificHeatAir;
     const totalAirHeatLoad = risingHeatLoad + exhaustHeatLoad;
-    const heatBalance = safeDiv(exhaustHeatLoad, totalHeatLoad);
+    const calculatedHeatBalance = safeDiv(exhaustHeatLoad, totalHeatLoad);
+    const heatBalance = manualHeatBalance ? heatBalanceInput : calculatedHeatBalance;
     const steamForAirHeating = safeDiv(risingHeatLoad, 630);
 
     const finsDeltaT = inputs.finsTemp - inputs.ambientTemp;
@@ -277,6 +284,7 @@ export default function App() {
       finsDeltaT,
       requiredSurfaceArea,
       fuelRows,
+      calculatedHeatBalance
     };
   }, [inputs]);
 
@@ -327,15 +335,55 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadInputSectionPdf = () => {
+    const section = document.getElementById("input-data-section");
+
+    if (!section) {
+      alert("Input Data section not found. Please check the section ID.");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank");
+
+    printWindow.document.write(`
+    <html>
+      <head>
+        <title>Input Data</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; }
+          .section-card { border: 1px solid #ddd; border-radius: 12px; padding: 20px; }
+          .section-action, button { display: none !important; }
+          h2 { margin: 0 0 6px; }
+          h3 { margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+          .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+          .field { border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
+          .field-head { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+          input, select { width: 100%; border: none; font-size: 14px; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        ${section.outerHTML}
+      </body>
+    </html>
+  `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="topbar-inner">
           <div className="brand-row">
-            <div className="brand-icon"><Flame size={25} /></div>
-            <div>
-              <h1>Biomass Band Dryer — Steam</h1>
-              <p>Live calculation sheet replacement · all formulas ported from workbook</p>
+            <div className="company-header">
+              <img src={logo} alt="Gem Drytech Systems LLP" className="company-logo" />
+
+              <div className="company-title">
+                <h1></h1>
+                <p>Live calculation workbook</p>
+              </div>
             </div>
           </div>
           <div className="action-row">
@@ -354,7 +402,44 @@ export default function App() {
           <KpiCard icon={Droplets} title="Water Evaporation" value={fmt(calc.waterEvaporation, 1)} unit="kg/hr" />
           <KpiCard icon={Activity} title="Total Heat Load" value={fmt(calc.totalHeatLoad, 0)} unit="kcal/hr" tone="red" />
           <KpiCard icon={Wind} title="Air Volume Req." value={fmt(calc.airVolume, 0)} unit="CMH" />
-          <KpiCard icon={CheckCircle2} title="Heat Balance" value={fmt(calc.heatBalance, 3)} note={Math.abs(calc.heatBalance - 1) <= 0.01 ? "Balanced" : "Review inputs"} tone="green" />
+          <div className="kpi-card">
+            <div className="kpi-inner">
+              <div className="kpi-icon kpi-icon-green">
+                <CheckCircle2 size={21} />
+              </div>
+
+              <div className="heat-balance-container">
+                <div className="kpi-title">Heat Balance</div>
+
+                {manualHeatBalance ? (
+                  <input
+                    type="number"
+                    value={heatBalanceInput}
+                    onChange={(e) => setHeatBalanceInput(n(e.target.value))}
+                    style={{ ...tableInputStyle, maxWidth: "120px" }}
+                  />
+                ) : (
+                  <div className="kpi-value-row">
+                    <span className="kpi-value">{fmt(calc.heatBalance, 3)}</span>
+                  </div>
+                )}
+
+                <div className="kpi-note">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={manualHeatBalance}
+                      onChange={(e) => {
+                        setManualHeatBalance(e.target.checked);
+                        setHeatBalanceInput(calc.calculatedHeatBalance);
+                      }}
+                    />{" "}
+                    Manual Edit
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <Section icon={Layers} title="Dryer Size" subtitle="Row 3 of the workbook: drying length, width, thickness...">
@@ -417,7 +502,7 @@ export default function App() {
             </div>
           </Section> */}
 
-           <Section icon={ThermometerSun} title="Heat Load Inputs" subtitle="Material heating and heat-loss assumptions.">
+          <Section icon={ThermometerSun} title="Heat Load Inputs" subtitle="Material heating and heat-loss assumptions.">
             <div className="form-grid five-col">
               <InputField label="Specific Heat of Material" value={inputs.specificHeatMaterial} onChange={(v) => update("specificHeatMaterial", v)} unit="kcal/kg°C" />
               <InputField label="Material Inlet Temp" value={inputs.materialInletTemp} onChange={(v) => update("materialInletTemp", v)} unit="°C" />
@@ -444,7 +529,7 @@ export default function App() {
             <CalcField label="Air Flow" value={calc.airVolume} unit="CMH" formula="Heat Load ÷ (Cp × ΔT × Density)" digits={5} />
             <InputField label="Air Density" value={inputs.airDensity} onChange={(v) => update("airDensity", v)} unit="kg/m³" />
             <CalcField label="MASS" value={calc.airMass} unit="KG/HR" formula="Air Flow × Air Density" digits={5} />
-            <InputField label="Initial Temp" value={inputs.exhaustTemp} onChange={(v) => update("exhaustTemp", v)} unit="°C" />
+            <InputField label="EXHAUST Temp" value={inputs.exhaustTemp} onChange={(v) => update("exhaustTemp", v)} unit="°C" />
             <InputField label="Dry Air Temp" value={inputs.dryAirTemp} onChange={(v) => update("dryAirTemp", v)} unit="°C" />
             <CalcField label="Delta T" value={calc.exhaustDeltaT} unit="°C" formula="Initial Temp - Exhaust Temp" digits={0} />
             <InputField label="Specific Heat Air" value={inputs.specificHeatAir} onChange={(v) => update("specificHeatAir", v)} unit="kcal/kg°C" />
@@ -522,7 +607,7 @@ export default function App() {
             </div>
           </Section>
 
-          <Section icon={Download} title="Heat Surface Area Check" subtitle="From the workbook section: Q = N × Surface Area × ΔT × H.">
+          {/* <Section icon={Download} title="Heat Surface Area Check" subtitle="From the workbook section: Q = N × Surface Area × ΔT × H.">
             <div className="form-grid two-col">
               <InputField label="Required Heat" value={inputs.requiredHeat} onChange={(v) => update("requiredHeat", v)} unit="kcal/hr" />
               <InputField label="H" value={inputs.heatTransferCoefficient} onChange={(v) => update("heatTransferCoefficient", v)} unit="coef." />
@@ -533,10 +618,10 @@ export default function App() {
               <CalcField label="Surface Area" value={calc.requiredSurfaceArea} unit="m²" formula="Q ÷ (H × N × ΔT)" digits={3} />
               <CalcField label="Steam Consumption" value={calc.steamForAirHeating} unit="kg/hr" formula="Rising Heat Load ÷ 630" digits={2} />
             </div>
-          </Section>
+          </Section> */}
         </div>
 
-        <Section icon={Calculator} title="Fixed Value × Quantity" subtitle="Use this section for sheet items where a fixed value is multiplied with quantity and returned as a result.">
+        {/* <Section icon={Calculator} title="Fixed Value × Quantity" subtitle="Use this section for sheet items where a fixed value is multiplied with quantity and returned as a result.">
           <div className="table-scroll">
             <table>
               <thead>
@@ -600,6 +685,60 @@ export default function App() {
               </tbody>
             </table>
           </div>
+        </Section> */}
+
+        <Section icon={Calculator} title="Input Data" subtitle="All editable input fields grouped section-wise." action={
+          <button className="btn primary" onClick={downloadInputSectionPdf}>
+            <FileText size={16} /> Download PDF
+          </button>
+        }>
+
+
+
+          <h3>Dryer Size Inputs</h3>
+          <div className="form-grid five-col mb-16">
+            <SelectCalcField
+              label="Drying Length"
+              value={inputs.dryingLengthFactor}
+              onChange={(v) => update("dryingLengthFactor", v)}
+              options={dryingLengthOptions}
+              calculatedValue={calc.dryingLength}
+              unit="m"
+              formula="Selected Drying Length × Length Quantity"
+              digits={3}
+            />
+            <InputField label="Length Quantity" value={inputs.dryingLengthQuantity} onChange={(v) => update("dryingLengthQuantity", v)} unit="nos" />
+            <InputField label="Width" value={inputs.width} onChange={(v) => update("width", v)} unit="m" />
+            <InputField label="Product Thickness" value={inputs.productThickness} onChange={(v) => update("productThickness", v)} unit="m" />
+            <InputField label="Layer" value={inputs.layer} onChange={(v) => update("layer", v)} unit="nos" />
+          </div>
+
+          <h3>Material Inputs</h3>
+          <div className="form-grid five-col mb-16">
+            <InputField label="Bulk Density" value={inputs.wetProductDensity} onChange={(v) => update("wetProductDensity", v)} unit="kg/m³" />
+            <InputField label="Drying Time" value={inputs.dryingTime} onChange={(v) => update("dryingTime", v)} unit="min" />
+            <InputField label="Feed Material" value={inputs.feedMaterial} onChange={(v) => update("feedMaterial", v)} unit="kg/hr" />
+            <InputField label="Feed Moisture" value={inputs.feedMoisture} onChange={(v) => update("feedMoisture", v)} unit="%" />
+            <InputField label="Discharge Moisture" value={inputs.dischargeMoisture} onChange={(v) => update("dischargeMoisture", v)} unit="%" />
+          </div>
+
+          <h3>Heat Load Inputs</h3>
+          <div className="form-grid five-col mb-16">
+            <InputField label="Specific Heat of Material" value={inputs.specificHeatMaterial} onChange={(v) => update("specificHeatMaterial", v)} unit="kcal/kg°C" />
+            <InputField label="Material Inlet Temp" value={inputs.materialInletTemp} onChange={(v) => update("materialInletTemp", v)} unit="°C" />
+            <InputField label="Material Outlet Temp" value={inputs.materialOutletTemp} onChange={(v) => update("materialOutletTemp", v)} unit="°C" />
+            <InputField label="Heat Loss Factor" value={inputs.heatLossFactor} onChange={(v) => update("heatLossFactor", v)} unit="factor" />
+            <InputField label="Dry Air Temp" value={inputs.dryAirTemp} onChange={(v) => update("dryAirTemp", v)} unit="°C" />
+          </div>
+
+          <h3>Air Heating Inputs</h3>
+          <div className="form-grid five-col mb-16">
+            <InputField label="Air Density" value={inputs.airDensity} onChange={(v) => update("airDensity", v)} unit="kg/m³" />
+            <InputField label="Initial Air Temp" value={inputs.initialAirTemp} onChange={(v) => update("initialAirTemp", v)} unit="°C" />
+            <InputField label="Exhaust Temp" value={inputs.exhaustTemp} onChange={(v) => update("exhaustTemp", v)} unit="°C" />
+            <InputField label="Specific Heat Air" value={inputs.specificHeatAir} onChange={(v) => update("specificHeatAir", v)} unit="kcal/kg°C" />
+          </div>
+
         </Section>
 
         <footer className="footer-card">
