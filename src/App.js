@@ -434,7 +434,7 @@ export default function App() {
                         setHeatBalanceInput(calc.calculatedHeatBalance);
                       }}
                     />{" "}
-                    Manual Edit
+                    Edit
                   </label>
                 </div>
               </div>

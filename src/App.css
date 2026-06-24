@@ -241,7 +241,12 @@ p {
 
 .kpi-note {
   width: 20px;
-  height: 20px;
+  margin-left: 2rem;
+  label{
+    input{
+      margin: auto;
+    }
+  }
 }
 
 .heat-balance-container {
