@@ -286,7 +286,7 @@ export default function App() {
       fuelRows,
       calculatedHeatBalance
     };
-  }, [inputs]);
+  }, [inputs, manualHeatBalance, heatBalanceInput]);
 
   const fixedSummary = useMemo(() => {
     const rows = fixedItems.map((item) => ({
@@ -381,7 +381,7 @@ export default function App() {
               <img src={logo} alt="Gem Drytech Systems LLP" className="company-logo" />
 
               <div className="company-title">
-                <h1></h1>
+                <h1>Dryer Calculator</h1>
                 <p>Live calculation workbook</p>
               </div>
             </div>
@@ -687,7 +687,7 @@ export default function App() {
           </div>
         </Section> */}
 
-        <Section icon={Calculator} title="Input Data" subtitle="All editable input fields grouped section-wise." action={
+        <Section id="input-data-section" icon={Calculator} title="Input Data" subtitle="All editable input fields grouped section-wise." action={
           <button className="btn primary" onClick={downloadInputSectionPdf}>
             <FileText size={16} /> Download PDF
           </button>
