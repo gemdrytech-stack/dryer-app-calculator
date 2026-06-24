@@ -3,10 +3,10 @@ import {
   Activity,
   Calculator,
   CheckCircle2,
-  Download,
+  //Download,
   Droplets,
   FileText,
-  Flame,
+  //Flame,
   Fuel,
   Layers,
   RefreshCcw,
@@ -203,20 +203,20 @@ export default function App() {
 
   const update = (key, value) => setInputs((prev) => ({ ...prev, [key]: value }));
 
-  const updateFixedItem = (id, key, value) => {
-    setFixedItems((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)));
-  };
+  // const updateFixedItem = (id, key, value) => {
+  //   setFixedItems((prev) => prev.map((item) => (item.id === id ? { ...item, [key]: value } : item)));
+  // };
 
-  const addFixedItem = () => {
-    setFixedItems((prev) => [
-      ...prev,
-      { id: Date.now(), item: "New Fixed Item", fixedValue: 0, quantity: 1, unit: "" },
-    ]);
-  };
+  // const addFixedItem = () => {
+  //   setFixedItems((prev) => [
+  //     ...prev,
+  //     { id: Date.now(), item: "New Fixed Item", fixedValue: 0, quantity: 1, unit: "" },
+  //   ]);
+  // };
 
-  const removeFixedItem = (id) => {
-    setFixedItems((prev) => (prev.length > 1 ? prev.filter((item) => item.id !== id) : prev));
-  };
+  // const removeFixedItem = (id) => {
+  //   setFixedItems((prev) => (prev.length > 1 ? prev.filter((item) => item.id !== id) : prev));
+  // };
 
   const calc = useMemo(() => {
     const dryingLength = inputs.dryingLengthFactor * inputs.dryingLengthQuantity;
