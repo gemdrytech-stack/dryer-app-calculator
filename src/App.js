@@ -30,6 +30,7 @@ const airDensityTable = [
 
 
 const defaultInputs = {
+  clientName: "",
   dryingLengthFactor: 3.251,
   dryingLengthQuantity: 1,
   width: 2.6,
@@ -332,6 +333,7 @@ export default function App() {
 
   const exportCsv = () => {
     const rows = [
+      ["Client Name", inputs.clientName, ""],
       ["Biomass Band Dryer - Steam Calculation"],
       ["Parameter", "Value", "Unit"],
       ["Water Evaporation", calc.waterEvaporation.toFixed(3), "kg/hr"],
@@ -474,6 +476,20 @@ export default function App() {
             </div>
           </div>
         </div>
+        <label className="field input-field">
+          <div className="field-head">
+            <span>Client Name</span>
+            <Pill>Input</Pill>
+          </div>
+          <div className="field-body">
+            <input
+              type="text"
+              value={inputs.clientName}
+              onChange={(event) => update("clientName", event.target.value)}
+              placeholder="Enter client name"
+            />
+          </div>
+        </label>
 
         <Section icon={Layers} title="Dryer Size" subtitle="Row 3 of the workbook: drying length, width, thickness...">
           <div className="form-grid three-col">
