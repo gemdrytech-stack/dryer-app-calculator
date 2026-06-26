@@ -17,6 +17,18 @@ import {
 import "./App.css";
 import logo from "./Assets/logo192.png";
 
+const airDensityTable = [
+  [-75, 1.783], [-50, 1.582], [-25, 1.422], [-15, 1.367],
+  [-10, 1.341], [-5, 1.316], [0, 1.292], [5, 1.268],
+  [10, 1.246], [15, 1.225], [20, 1.204], [25, 1.184],
+  [30, 1.164], [40, 1.127], [50, 1.093], [60, 1.060],
+  [80, 1.000], [100, 0.9467], [125, 0.8868], [150, 0.8338],
+  [175, 0.7868], [200, 0.7451], [225, 0.7078], [300, 0.6168],
+  [400, 0.5238], [500, 0.4567], [600, 0.4043], [700, 0.3626],
+  [800, 0.3289], [900, 0.3009], [1000, 0.2773], [1100, 0.2571],
+];
+
+
 const defaultInputs = {
   dryingLengthFactor: 3.251,
   dryingLengthQuantity: 1,
@@ -195,6 +207,25 @@ function Section({ id, icon: Icon, title, subtitle, children, action }) {
   );
 }
 
+const getAirDensityByTemp = (dryAirTemp) => {
+  const temp = Number(dryAirTemp);
+
+  if (!Number.isFinite(temp)) return 0;
+
+  let selectedDensity = airDensityTable[0][1];
+
+  for (const [tableTemp, density] of airDensityTable) {
+    if (temp >= tableTemp) {
+      selectedDensity = density;
+    } else {
+      break;
+    }
+  }
+
+  return selectedDensity;
+};
+
+
 export default function App() {
   const [inputs, setInputs] = useState(defaultInputs);
   const [fixedItems, setFixedItems] = useState(defaultFixedItems);
@@ -234,9 +265,10 @@ export default function App() {
     const heatLoss = inputs.heatLossFactor * (sensibleHeatWater + materialHeating + latentHeat);
     const totalHeatLoad = sensibleHeatWater + materialHeating + latentHeat + heatLoss;
 
+    const calculatedAirDensity = getAirDensityByTemp(inputs.dryAirTemp);
     const exhaustDeltaT = inputs.dryAirTemp - inputs.exhaustTemp;
-    const airVolume = safeDiv(totalHeatLoad, inputs.specificHeatAir * exhaustDeltaT * inputs.airDensity);
-    const airMass = airVolume * inputs.airDensity;
+    const airVolume = safeDiv(totalHeatLoad, inputs.specificHeatAir * exhaustDeltaT * calculatedAirDensity);
+    const airMass = airVolume * calculatedAirDensity;
     const risingDeltaT = inputs.dryAirTemp - inputs.initialAirTemp;
     const risingHeatLoad = airMass * risingDeltaT * inputs.specificHeatAir;
     const exhaustHeatLoad = airMass * exhaustDeltaT * inputs.specificHeatAir;
@@ -284,7 +316,8 @@ export default function App() {
       finsDeltaT,
       requiredSurfaceArea,
       fuelRows,
-      calculatedHeatBalance
+      calculatedHeatBalance,
+      calculatedAirDensity,
     };
   }, [inputs, manualHeatBalance, heatBalanceInput]);
 
@@ -508,7 +541,6 @@ export default function App() {
               <InputField label="Material Inlet Temp" value={inputs.materialInletTemp} onChange={(v) => update("materialInletTemp", v)} unit="°C" />
               <InputField label="Material Outlet Temp" value={inputs.materialOutletTemp} onChange={(v) => update("materialOutletTemp", v)} unit="°C" />
               <InputField label="Heat Loss" value={inputs.heatLossFactor} onChange={(v) => update("heatLossFactor", v)} unit="factor" />
-              <InputField label="Dry Air Temp" value={inputs.dryAirTemp} onChange={(v) => update("dryAirTemp", v)} unit="°C" />
             </div>
           </Section>
         </div>
@@ -517,9 +549,13 @@ export default function App() {
           <h3 className="">RISING TEMP</h3>
           <div className="form-grid four-col mb-16">
             <CalcField label="Air Flow" value={calc.airVolume} unit="CMH" formula="Heat Load ÷ (Cp × ΔT × Density)" digits={5} />
-            <InputField label="Air Density" value={inputs.airDensity} onChange={(v) => update("airDensity", v)} unit="kg/m³" />
-            <CalcField label="MASS" value={calc.airMass} unit="KG/HR" formula="Air Flow × Air Density" digits={5} />
-            <InputField label="Initial Temp" value={inputs.initialAirTemp} onChange={(v) => update("initialAirTemp", v)} unit="°C" />
+            <CalcField
+              label="Air Density"
+              value={calc.calculatedAirDensity}
+              unit="kg/m³"
+              formula="Based on Dry Air Temp"
+              digits={4}
+            />            <InputField label="Initial Temp" value={inputs.initialAirTemp} onChange={(v) => update("initialAirTemp", v)} unit="°C" />
             <InputField label="Dry Air Temp" value={inputs.dryAirTemp} onChange={(v) => update("dryAirTemp", v)} unit="°C" />
             <CalcField label="Delta T" value={calc.risingDeltaT} unit="°C" formula="Initial Temp - Dry Air Temp" digits={0} />
             <InputField label="Specific Heat Air" value={inputs.specificHeatAir} onChange={(v) => update("specificHeatAir", v)} unit="kcal/kg°C" />
@@ -527,9 +563,13 @@ export default function App() {
           <h3 className="">EXHAUST TEMP</h3>
           <div className="form-grid four-col mb-16">
             <CalcField label="Air Flow" value={calc.airVolume} unit="CMH" formula="Heat Load ÷ (Cp × ΔT × Density)" digits={5} />
-            <InputField label="Air Density" value={inputs.airDensity} onChange={(v) => update("airDensity", v)} unit="kg/m³" />
-            <CalcField label="MASS" value={calc.airMass} unit="KG/HR" formula="Air Flow × Air Density" digits={5} />
-            <InputField label="EXHAUST Temp" value={inputs.exhaustTemp} onChange={(v) => update("exhaustTemp", v)} unit="°C" />
+            <CalcField
+              label="Air Density"
+              value={calc.calculatedAirDensity}
+              unit="kg/m³"
+              formula="Based on Dry Air Temp"
+              digits={4}
+            />            <InputField label="EXHAUST Temp" value={inputs.exhaustTemp} onChange={(v) => update("exhaustTemp", v)} unit="°C" />
             <InputField label="Dry Air Temp" value={inputs.dryAirTemp} onChange={(v) => update("dryAirTemp", v)} unit="°C" />
             <CalcField label="Delta T" value={calc.exhaustDeltaT} unit="°C" formula="Initial Temp - Exhaust Temp" digits={0} />
             <InputField label="Specific Heat Air" value={inputs.specificHeatAir} onChange={(v) => update("specificHeatAir", v)} unit="kcal/kg°C" />
@@ -553,7 +593,7 @@ export default function App() {
                 <tr>
                   <td>Rising Temp</td>
                   <td>{fmt(calc.airVolume, 2)}</td>
-                  <td>{fmt(inputs.airDensity, 4)}</td>
+                  <td>{fmt(calc.calculatedAirDensity, 4)}</td>
                   <td>{fmt(calc.airMass, 2)}</td>
                   <td>{fmt(inputs.initialAirTemp, 0)}</td>
                   <td>{fmt(inputs.dryAirTemp, 0)}</td>
@@ -563,7 +603,7 @@ export default function App() {
                 <tr>
                   <td>Exhaust Temp</td>
                   <td>{fmt(calc.airVolume, 2)}</td>
-                  <td>{fmt(inputs.airDensity, 4)}</td>
+                  <td>{fmt(calc.calculatedAirDensity, 4)}</td>
                   <td>{fmt(calc.airMass, 2)}</td>
                   <td>{fmt(inputs.exhaustTemp, 0)}</td>
                   <td>{fmt(inputs.dryAirTemp, 0)}</td>
