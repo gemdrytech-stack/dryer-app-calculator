@@ -17,7 +17,7 @@ import {
 import "./App.css";
 import logo from "./Assets/logo192.png";
 
-const airDensityTable = [
+const airDensityBaseTable = [
   [-75, 1.783], [-50, 1.582], [-25, 1.422], [-15, 1.367],
   [-10, 1.341], [-5, 1.316], [0, 1.292], [5, 1.268],
   [10, 1.246], [15, 1.225], [20, 1.204], [25, 1.184],
@@ -75,7 +75,14 @@ const fuelDefaults = [
 ];
 
 const safeDiv = (a, b) => (Number.isFinite(a) && Number.isFinite(b) && b !== 0 ? a / b : 0);
+// const n = (value) => {
+//   const parsed = Number(value);
+//   console.log(value, parsed, "+++++++++++++")
+//   return Number.isFinite(parsed) ? parsed : 0;
+// };
 const n = (value) => {
+  if (value === "" || value === null || value === undefined) return 0;
+
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
@@ -122,20 +129,58 @@ function KpiCard({ icon: Icon, title, value, unit, tone = "black", note }) {
 }
 
 function InputField({ label, value, onChange, unit }) {
+
+  const handleChange = (e) => {
+    let val = e.target.value;
+
+    // Allow empty while user is typing
+    if (val === "") {
+      onChange("");
+      return;
+    }
+
+    // Remove leading zeros (except before decimal)
+    val = val.replace(/^0+(?=\d)/, "");
+
+    // Accept only valid numbers
+    if (!isNaN(val)) {
+      onChange(val);
+    }
+  };
+
+  const handleBlur = (e) => {
+    let val = e.target.value;
+
+    // Empty becomes 0
+    if (val === "") {
+      onChange(0);
+      return;
+    }
+
+    // Normalize
+    onChange(Number(val));
+  };
+
   return (
     <label className="field input-field">
       <div className="field-head">
         <span>{label}</span>
         <Pill>Input</Pill>
       </div>
+
       <div className="field-body">
-        <input type="number" value={value} onChange={(event) => onChange(n(event.target.value))} />
+        <input
+          type="text"
+          inputMode="decimal"
+          value={value}
+          onChange={handleChange}
+          onBlur={handleBlur}
+        />
         {unit && <span className="field-unit">{unit}</span>}
       </div>
     </label>
   );
 }
-
 function SelectCalcField({ label, value, onChange, options, calculatedValue, unit, formula, digits = 3 }) {
   return (
     <label className="field input-field calc-field">
@@ -213,17 +258,27 @@ const getAirDensityByTemp = (dryAirTemp) => {
 
   if (!Number.isFinite(temp)) return 0;
 
-  let selectedDensity = airDensityTable[0][1];
+  if (temp <= airDensityBaseTable[0][0]) {
+    return airDensityBaseTable[0][1];
+  }
 
-  for (const [tableTemp, density] of airDensityTable) {
-    if (temp >= tableTemp) {
-      selectedDensity = density;
-    } else {
-      break;
+  const lastIndex = airDensityBaseTable.length - 1;
+
+  if (temp >= airDensityBaseTable[lastIndex][0]) {
+    return airDensityBaseTable[lastIndex][1];
+  }
+
+  for (let i = 0; i < airDensityBaseTable.length - 1; i++) {
+    const [t1, d1] = airDensityBaseTable[i];
+    const [t2, d2] = airDensityBaseTable[i + 1];
+
+    if (temp >= t1 && temp <= t2) {
+      const density = d1 + ((temp - t1) * (d2 - d1)) / (t2 - t1);
+      return Number(density.toFixed(4));
     }
   }
 
-  return selectedDensity;
+  return 0;
 };
 
 
@@ -268,7 +323,11 @@ export default function App() {
 
     const calculatedAirDensity = getAirDensityByTemp(inputs.dryAirTemp);
     const exhaustDeltaT = inputs.dryAirTemp - inputs.exhaustTemp;
-    const airVolume = safeDiv(totalHeatLoad, inputs.specificHeatAir * exhaustDeltaT * calculatedAirDensity);
+    const airVolume = safeDiv(
+      totalHeatLoad,
+      inputs.specificHeatAir * exhaustDeltaT * calculatedAirDensity
+    );
+
     const airMass = airVolume * calculatedAirDensity;
     const risingDeltaT = inputs.dryAirTemp - inputs.initialAirTemp;
     const risingHeatLoad = airMass * risingDeltaT * inputs.specificHeatAir;
@@ -534,7 +593,7 @@ export default function App() {
             <CalcField label="OUTPUT MOISTURE" value={inputs.dischargeMoisture} unit="%" formula="Discharge Moisture" digits={2} />
             <CalcField label="WATER EVAPORATION" value={calc.waterEvaporation} unit="kg/hr" formula="Feed Material - Material Discharge" digits={2} />
             <CalcField label="BULK DENSITY" value={inputs.wetProductDensity} unit="kg/m³" formula="Wet Product" digits={2} />
-            <CalcField label="DRYING TEMPERATURE" value={inputs.wetProductDensity} unit="kg/m³" formula="Wet Product" digits={2} />
+            <CalcField label="DRYING TEMPERATURE" value={inputs.dryAirTemp} unit="°C" formula="Dry Air Temp" digits={2} />
             <CalcField label="DRYING TIME" value={inputs.dryingTime} unit="min" formula="Drying Time" digits={2} />
             <CalcField label="Feeding Thickness" value={inputs.productThickness * 1000} unit="mm" formula="Product Thickness × 1000" digits={0} />
             <CalcField label="Sensible Heat of Water" value={calc.sensibleHeatWater} unit="kcal/hr" formula="75 × Water Evaporation" digits={0} />
@@ -789,7 +848,13 @@ export default function App() {
 
           <h3>Air Heating Inputs</h3>
           <div className="form-grid five-col mb-16">
-            <InputField label="Air Density" value={inputs.airDensity} onChange={(v) => update("airDensity", v)} unit="kg/m³" />
+            <CalcField
+              label="Air Density"
+              value={calc.calculatedAirDensity}
+              unit="kg/m³"
+              formula="Based on Dry Air Temp"
+              digits={4}
+            />
             <InputField label="Initial Air Temp" value={inputs.initialAirTemp} onChange={(v) => update("initialAirTemp", v)} unit="°C" />
             <InputField label="Exhaust Temp" value={inputs.exhaustTemp} onChange={(v) => update("exhaustTemp", v)} unit="°C" />
             <InputField label="Specific Heat Air" value={inputs.specificHeatAir} onChange={(v) => update("specificHeatAir", v)} unit="kcal/kg°C" />
