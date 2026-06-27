@@ -409,6 +409,62 @@ th:first-child {
   margin-bottom: 16px;
 }
 
+/* login page */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f4f5;
+}
+
+.login-card {
+  width: 390px;
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+.login-card h2 {
+  margin: 16px 0 6px;
+}
+
+.login-card p {
+  margin-bottom: 18px;
+  color: #71717a;
+}
+
+.login-card input {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #d4d4d8;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.login-card button {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.login-error {
+  margin-top: 12px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.auth-switch {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+
 @media (max-width: 1100px) {
 
   .kpi-grid,
