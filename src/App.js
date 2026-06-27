@@ -1,4 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { auth } from "./firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+} from "firebase/auth";
 import {
   Activity,
   Calculator,
@@ -73,6 +80,8 @@ const fuelDefaults = [
   { name: "Steam", basis: "Kcal / Kg", gcv: 630, unit: "kg/hr" },
   { name: "Electric", basis: "Kcal / kW", gcv: 860, unit: "kW" },
 ];
+
+
 
 const safeDiv = (a, b) => (Number.isFinite(a) && Number.isFinite(b) && b !== 0 ? a / b : 0);
 // const n = (value) => {
@@ -282,11 +291,23 @@ const getAirDensityByTemp = (dryAirTemp) => {
 };
 
 
+
 export default function App() {
   const [inputs, setInputs] = useState(defaultInputs);
   const [fixedItems, setFixedItems] = useState(defaultFixedItems);
   const [manualHeatBalance, setManualHeatBalance] = useState(false);
   const [heatBalanceInput, setHeatBalanceInput] = useState(0);
+
+  const [user, setUser] = useState(null);
+  const [authMode, setAuthMode] = useState("login"); // login or signup
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+
+  const [authForm, setAuthForm] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
 
   const update = (key, value) => setInputs((prev) => ({ ...prev, [key]: value }));
 
@@ -304,6 +325,58 @@ export default function App() {
   // const removeFixedItem = (id) => {
   //   setFixedItems((prev) => (prev.length > 1 ? prev.filter((item) => item.id !== id) : prev));
   // };
+
+ useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    setUser(currentUser);
+    setAuthLoading(false);
+  });
+
+  return () => unsubscribe();
+}, []);
+
+ const handleAuthSubmit = async (e) => {
+  e.preventDefault();
+  setAuthError("");
+
+  const email = authForm.email.trim();
+  const password = authForm.password;
+  const confirmPassword = authForm.confirmPassword;
+
+  try {
+    if (authMode === "signup") {
+      if (password !== confirmPassword) {
+        setAuthError("Passwords do not match.");
+        return;
+      }
+
+      if (password.length < 6) {
+        setAuthError("Password must be at least 6 characters.");
+        return;
+      }
+
+      await createUserWithEmailAndPassword(auth, email, password);
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+  } catch (error) {
+    if (error.code === "auth/email-already-in-use") {
+      setAuthError("This email is already registered. Please login.");
+    } else if (error.code === "auth/invalid-email") {
+      setAuthError("Please enter a valid email address.");
+    } else if (error.code === "auth/weak-password") {
+      setAuthError("Password is too weak.");
+    } else if (
+      error.code === "auth/invalid-credential" ||
+      error.code === "auth/wrong-password" ||
+      error.code === "auth/user-not-found"
+    ) {
+      setAuthError("Invalid email or password.");
+    } else {
+      setAuthError("Authentication failed. Please try again.");
+    }
+  }
+};
 
   const calc = useMemo(() => {
     const dryingLength = inputs.dryingLengthFactor * inputs.dryingLengthQuantity;
@@ -465,6 +538,89 @@ export default function App() {
     printWindow.focus();
     printWindow.print();
   };
+if (authLoading) {
+  return <div className="login-page">Loading...</div>;
+}
+
+if (!user) {
+  return (
+    <div className="login-page">
+      <form className="login-card" onSubmit={handleAuthSubmit}>
+        <img
+          src={logo}
+          alt="Gem Drytech Systems LLP"
+          className="company-logo"
+        />
+
+        <h2>
+          {authMode === "login"
+            ? "Dryer Calculator Login"
+            : "Create Account"}
+        </h2>
+
+        <p>
+          {authMode === "login"
+            ? "Login with your registered email and password"
+            : "Register your email to access the calculator"}
+        </p>
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={authForm.email}
+          onChange={(e) =>
+            setAuthForm({ ...authForm, email: e.target.value })
+          }
+          required
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={authForm.password}
+          onChange={(e) =>
+            setAuthForm({ ...authForm, password: e.target.value })
+          }
+          required
+        />
+
+        {authMode === "signup" && (
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={authForm.confirmPassword}
+            onChange={(e) =>
+              setAuthForm({
+                ...authForm,
+                confirmPassword: e.target.value,
+              })
+            }
+            required
+          />
+        )}
+
+        {authError && <div className="login-error">{authError}</div>}
+
+        <button type="submit" className="btn primary">
+          {authMode === "login" ? "Login" : "Sign Up"}
+        </button>
+
+        <button
+          type="button"
+          className="auth-switch"
+          onClick={() => {
+            setAuthMode(authMode === "login" ? "signup" : "login");
+            setAuthError("");
+          }}
+        >
+          {authMode === "login"
+            ? "New user? Create account"
+            : "Already registered? Login"}
+        </button>
+      </form>
+    </div>
+  );
+}
 
   return (
     <div className="app-shell">
@@ -487,6 +643,9 @@ export default function App() {
             <button className="btn secondary" onClick={() => { setInputs(defaultInputs); setFixedItems(defaultFixedItems); }}><RefreshCcw size={16} />Reset</button>
             <button className="btn secondary" onClick={() => window.print()}><FileText size={16} />PDF</button>
             <button className="btn primary" onClick={exportCsv}><Sheet size={16} />Excel</button>
+            <button className="btn secondary" onClick={() => signOut(auth)}>
+              Logout
+            </button>
           </div>
         </div>
       </header>
